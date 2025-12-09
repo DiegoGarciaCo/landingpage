@@ -11,7 +11,8 @@ import { LeadFormData, ApiResponse, LeadSubmissionResponse } from '../definition
  * @returns Promise with API response
  */
 export async function submitLead(
-    formData: LeadFormData
+    formData: LeadFormData,
+    source: string
 ): Promise<ApiResponse<LeadSubmissionResponse>> {
     try {
         const response = await fetch('/api/leads', {
@@ -19,7 +20,13 @@ export async function submitLead(
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(formData),
+            body: JSON.stringify({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone: formData.phoneNumber,
+                source: source,
+            })
         });
 
         const data = await response.json();

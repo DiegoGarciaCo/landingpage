@@ -15,11 +15,19 @@ export async function POST(request: NextRequest) {
     try {
         // Parse the request body
         const body = await request.json();
+        const formData = {
+            firstName: body.firstName,
+            lastName: body.lastName,
+            email: body.email,
+            phoneNumber: body.phone,
+        };
+        const source = body.source || 'Landing Page';
+
 
         // Validate the request data
         let validatedData;
         try {
-            validatedData = leadFormSchema.parse(body);
+            validatedData = leadFormSchema.parse(formData);
         } catch (error) {
             if (error instanceof z.ZodError) {
                 return NextResponse.json(
@@ -48,7 +56,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Forward the request to the Golang backend
-        const response = await fetch(`${BASE_URL}/landing-pages/leads`, {
+        const response = await fetch(`${BASE_URL}/landing-page-form?source=${source}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
