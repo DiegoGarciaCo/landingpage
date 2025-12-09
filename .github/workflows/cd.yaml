@@ -1,0 +1,98 @@
+name: cd
+on:
+  push:
+    branches: [main]
+jobs:
+  build-and-push:
+    name: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: set up node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: install deps
+        run: npm ci
+
+      - name: build app
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+        run: npm run build
+
+      - name: login to docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{vars.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: dgarcia51/landingpage:${{ github.sha }},dgarcia51/landingpage:latest
+          secrets: |
+            X_API_KEY=${{ secrets.X_API_KEY }}
+            BASE_URL=${{ secrets.BASE_URL }}
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs:
+      - build-and-push
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: soldbyghost.com
+          username: ghost
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Create working directory
+            mkdir -p ~/pages
+            cd ~/pages
+
+            # Create docker-compose.yml
+            cat > docker-compose.yml << 'COMPOSE_EOF'
+            services:
+              app:
+                image: dgarcia51/landingpage:latest
+                ports:
+                  - "3005:3005"
+                environment:
+                  - PORT=${PORT}
+                  - X_API_KEY=${X_API_KEY}
+                  - NODE_ENV=production
+                  - BASE_URL=${BASE_URL}
+                deploy:
+                  replicas: 1
+                  update_config:
+                    parallelism: 1
+                    delay: 10s
+                    failure_action: rollback
+            COMPOSE_EOF
+
+            # Export environment variables
+            export PORT=${{ secrets.PORT }}
+            export X_API_KEY=${{ secrets.X_API_KEY }}
+            export BASE_URL=${{ secrets.BASE_URL }}
+
+            # Deploy stack
+            docker stack deploy -c docker-compose.yml landingpage
+
+            # Show status
+            echo "Deployment complete!"
+            docker stack ps landingpage
