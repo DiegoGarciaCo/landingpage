@@ -1,7 +1,8 @@
 import { HeroSection } from '@/components/hero-section';
 import { BenefitsSection } from '@/components/benefits-section';
 import { LeadForm } from '@/components/lead-form';
-import { TrustIndicators } from '@/components/trust-indicators';
+{/* import { TrustIndicators } from '@/components/trust-indicators'; */ }
+import Link from 'next/link';
 
 export default async function Home({
     searchParams,
@@ -47,19 +48,19 @@ export default async function Home({
                     </div>
 
                     {/* Trust Indicators */}
-                    <TrustIndicators />
+                    {/* <TrustIndicators /> */}
 
                     {/* Footer */}
                     <footer className="mt-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                        <p>© {new Date().getFullYear()} Your Realty Company. All rights reserved.</p>
+                        <p>© {new Date().getFullYear()} Stonebridge Realty. All rights reserved.</p>
                         <div className="mt-2 flex items-center justify-center gap-4">
-                            <a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                            <Link href="/privacy-policy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                 Privacy Policy
-                            </a>
+                            </Link>
                             <span>•</span>
-                            <a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                            <Link href="/terms-and-conditions" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                 Terms of Service
-                            </a>
+                            </Link>
                         </div>
                     </footer>
                 </div>
