@@ -22,8 +22,9 @@ jobs:
 
       - name: build app
         env:
+          PORT: ${{ secrets.PORT }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
-          BASE_URL: ${{ secrets.BASE_URL }}
+          NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
         run: npm run build
 
       - name: login to docker hub
@@ -41,8 +42,9 @@ jobs:
           push: true
           tags: dgarcia51/landingpage:${{ github.sha }},dgarcia51/landingpage:latest
           secrets: |
+            PORT=${{ secrets.PORT }}
             X_API_KEY=${{ secrets.X_API_KEY }}
-            BASE_URL=${{ secrets.BASE_URL }}
+            NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
 
   deploy:
     name: Deploy
@@ -76,7 +78,7 @@ jobs:
                   - PORT=${PORT}
                   - X_API_KEY=${X_API_KEY}
                   - NODE_ENV=production
-                  - BASE_URL=${BASE_URL}
+                  - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
                 deploy:
                   replicas: 1
                   update_config:
@@ -88,7 +90,7 @@ jobs:
             # Export environment variables
             export PORT=${{ secrets.PORT }}
             export X_API_KEY=${{ secrets.X_API_KEY }}
-            export BASE_URL=${{ secrets.BASE_URL }}
+            export NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
 
             # Deploy stack
             docker stack deploy -c docker-compose.yml landingpage
