@@ -25,6 +25,7 @@ jobs:
           PORT: ${{ secrets.PORT }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
+          NEXT_PUBLIC_CLARITY_ID: ${{ secrets.NEXT_PUBLIC_CLARITY_ID }}
         run: npm run build
 
       - name: login to docker hub
@@ -45,6 +46,7 @@ jobs:
             PORT=${{ secrets.PORT }}
             X_API_KEY=${{ secrets.X_API_KEY }}
             NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
+            NEXT_PUBLIC_CLARITY_ID=${{ secrets.NEXT_PUBLIC_CLARITY_ID }}
 
   deploy:
     name: Deploy
@@ -79,6 +81,7 @@ jobs:
                   - X_API_KEY=${X_API_KEY}
                   - NODE_ENV=production
                   - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
+                  - NEXT_PUBLIC_CLARITY_ID=${NEXT_PUBLIC_CLARITY_ID}
                 deploy:
                   replicas: 1
                   update_config:
@@ -91,6 +94,7 @@ jobs:
             export PORT=${{ secrets.PORT }}
             export X_API_KEY=${{ secrets.X_API_KEY }}
             export NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
+            export NEXT_PUBLIC_CLARITY_ID=${{ secrets.NEXT_PUBLIC_CLARITY_ID }}
 
             # Deploy stack
             docker stack deploy -c docker-compose.yml landingpage

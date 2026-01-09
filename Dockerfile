@@ -1,17 +1,23 @@
-FROM node:20-alpine AS base
-
-# Install dependencies
-FROM base AS deps
-RUN apk add --no-cache \
-    openssl \
-    zlib \
-    libgcc \
-    && ln -s /usr/lib/libssl.so.1.1 /usr/lib/libssl.so
+# Base image (glibc)
+FROM node:20-bookworm AS base
 WORKDIR /app
+
+# ------------------------
+# Dependencies stage
+# ------------------------
+FROM base AS deps
+
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* .npmrc* ./
 RUN npm ci
 
+# ------------------------
 # Builder stage
+# ------------------------
 FROM base AS builder
 WORKDIR /app
 
@@ -20,27 +26,33 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Use BuildKit secret mounts to pass env variables at build-time
-RUN --mount=type=secret,id=X-API-KEY,env=X-API-KEY\
+# Build with secrets
+RUN --mount=type=secret,id=X-API-KEY,env=X-API-KEY \
     --mount=type=secret,id=NEXT_PUBLIC_BASE_URL,env=NEXT_PUBLIC_BASE_URL \
     --mount=type=secret,id=PORT,env=PORT \
-    sh -c "npm run build"
+    --mount=type=secret,id=NEXT_PUBLIC_CLARITY_ID,env=NEXT_PUBLIC_CLARITY_ID \
+    npm run build
 
+# ------------------------
 # Runner stage
-FROM base AS runner
+# ------------------------
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=builder /app/public ./public
+# Create non-root user
+RUN useradd -m ghost
 
-RUN adduser -D ghost
+COPY --from=builder /app/public ./public
 COPY --from=builder --chown=ghost:ghost /app/.next/standalone ./
 COPY --from=builder --chown=ghost:ghost /app/.next/static ./.next/static
 
 USER ghost
+
 EXPOSE 3005
 ENV PORT=3005
 ENV HOSTNAME="0.0.0.0"
+
 CMD ["node", "server.js"]
