@@ -3,21 +3,24 @@
  */
 
 export interface LeadFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
 }
 
 export interface ApiResponse<T = void> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  error?: string;
+    success: boolean;
+    message?: string;
+    data?: T;
+    error?: string;
 }
 
 export interface LeadSubmissionResponse {
-  leadId?: string;
-  timestamp?: string;
+    success: boolean;
+    requiresVerification?: boolean;
+    email?: string;
+    leadId?: string;
+    timestamp?: string;
 }
 

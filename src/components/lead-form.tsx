@@ -15,6 +15,12 @@ interface FormErrors {
     phoneNumber?: string;
 }
 
+type SubmitStatus =
+    | { type: 'success'; message: string }
+    | { type: 'error'; message: string }
+    | { type: 'verify'; message: string; email: string }
+    | { type: null; message: string };
+
 export function LeadForm({ source }: { source: string }) {
     const [formData, setFormData] = useState<LeadFormData>({
         firstName: '',
@@ -26,11 +32,7 @@ export function LeadForm({ source }: { source: string }) {
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [submitStatus, setSubmitStatus] = useState<{
-        type: 'success' | 'error' | 'verify' | null;
-        message: string;
-        email?: string;
-    }>({ type: null, message: '' });
+    const [submitStatus, setSubmitStatus] = useState<SubmitStatus>({ type: null, message: '' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -74,7 +76,7 @@ export function LeadForm({ source }: { source: string }) {
         try {
             const response = await submitLead(formData, source);
 
-            if (response.success && response.requiresVerification) {
+            if (response.success && response.data?.requiresVerification) {
                 setSubmitStatus({
                     type: 'verify',
                     message: `We've sent a verification link to ${formData.email}. Please check your inbox and click the link to finish signing up.`,
@@ -113,7 +115,8 @@ export function LeadForm({ source }: { source: string }) {
     };
 
     const handleResendVerification = async () => {
-        if (!submitStatus.email) return;
+        if (submitStatus.type !== 'verify') return;
+        ;
 
         try {
             await resendVerification(submitStatus.email);
@@ -198,7 +201,7 @@ export function LeadForm({ source }: { source: string }) {
                         required
                     />
 
-                    {submitStatus.type && submitStatus.type !== 'verify' && (
+                    {submitStatus.type && (
                         <div
                             className={`rounded-lg p-4 text-sm ${submitStatus.type === 'success'
                                 ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'

@@ -52,7 +52,7 @@ export async function submitLead(
 
 export async function resendVerification(email: string): Promise<ApiResponse<null>> {
     try {
-        const response = await fetch('/api/emails/resend-verification', {
+        const response = await fetch('/api/resend-verification', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
