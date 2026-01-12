@@ -50,3 +50,33 @@ export async function submitLead(
     }
 }
 
+export async function resendVerification(email: string): Promise<ApiResponse<null>> {
+    try {
+        const response = await fetch('/api/emails/resend-verification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return {
+                success: false,
+                error: data.error || `HTTP error! status: ${response.status}`,
+                message: data.message || 'Failed to resend verification email. Please try again.',
+            };
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error resending verification email:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'An unexpected error occurred',
+            message: 'Failed to resend verification email. Please try again.',
+        };
+    }
+}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { leadFormSchema } from '@/lib/validations/lead-form';
-import { submitLead } from '@/lib/data/leads';
+import { submitLead, resendVerification } from '@/lib/data/leads';
 import { LeadFormData } from '@/lib/definitions/types';
 import { z } from 'zod';
 
@@ -25,21 +25,21 @@ export function LeadForm({ source }: { source: string }) {
 
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+
     const [submitStatus, setSubmitStatus] = useState<{
-        type: 'success' | 'error' | null;
+        type: 'success' | 'error' | 'verify' | null;
         message: string;
+        email?: string;
     }>({ type: null, message: '' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
 
-        // Clear error for this field when user starts typing
         if (errors[name as keyof FormErrors]) {
             setErrors((prev) => ({ ...prev, [name]: undefined }));
         }
 
-        // Clear submit status when user modifies form
         if (submitStatus.type) {
             setSubmitStatus({ type: null, message: '' });
         }
@@ -66,10 +66,7 @@ export function LeadForm({ source }: { source: string }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate form
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
 
         setIsSubmitting(true);
         setSubmitStatus({ type: null, message: '' });
@@ -77,13 +74,22 @@ export function LeadForm({ source }: { source: string }) {
         try {
             const response = await submitLead(formData, source);
 
+            if (response.success && response.requiresVerification) {
+                setSubmitStatus({
+                    type: 'verify',
+                    message: `We've sent a verification link to ${formData.email}. Please check your inbox and click the link to finish signing up.`,
+                    email: formData.email,
+                });
+
+                return;
+            }
+
             if (response.success) {
                 setSubmitStatus({
                     type: 'success',
-                    message: response.message || 'Thank you! We\'ll be in touch soon.',
+                    message: response.message || 'Thank you! We’ll be in touch soon.',
                 });
 
-                // Reset form after successful submission
                 setFormData({
                     firstName: '',
                     lastName: '',
@@ -106,103 +112,117 @@ export function LeadForm({ source }: { source: string }) {
         }
     };
 
+    const handleResendVerification = async () => {
+        if (!submitStatus.email) return;
+
+        try {
+            await resendVerification(submitStatus.email);
+            alert('Verification email resent. Please check your inbox.');
+        } catch {
+            alert('Failed to resend verification email. Please try again.');
+        }
+    };
+
     return (
-        <form onSubmit={handleSubmit} className="w-full space-y-5">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    error={errors.firstName}
-                    disabled={isSubmitting}
-                    required
-                />
-                <Input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last Name"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    error={errors.lastName}
-                    disabled={isSubmitting}
-                    required
-                />
-            </div>
+        <div className="w-full">
+            {/* Verification Required State */}
+            {submitStatus.type === 'verify' && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200 space-y-4">
+                    <p className="text-lg font-semibold">Verify your email address</p>
 
-            <Input
-                type="email"
-                name="email"
-                placeholder="Email Address"
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                disabled={isSubmitting}
-                required
-            />
+                    <p>
+                        We’ve sent a verification link to:
+                        <span className="block mt-1 font-semibold">{submitStatus.email}</span>
+                    </p>
 
-            <Input
-                type="tel"
-                name="phoneNumber"
-                placeholder="Phone Number"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                error={errors.phoneNumber}
-                disabled={isSubmitting}
-                required
-            />
+                    <p>
+                        Please check your inbox and click the link to complete your signup.
+                        If you don’t see it, check your spam folder.
+                    </p>
 
-            {submitStatus.type && (
-                <div
-                    className={`rounded-lg p-4 text-sm ${submitStatus.type === 'success'
-                        ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                        : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                        }`}
-                >
-                    {submitStatus.message}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleResendVerification}
+                    >
+                        Resend verification email
+                    </Button>
                 </div>
             )}
 
-            <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isSubmitting}
-            >
-                {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                        <svg
-                            className="animate-spin h-5 w-5"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                            />
-                            <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                        </svg>
-                        Submitting...
-                    </span>
-                ) : (
-                    'Join Our Email List'
-                )}
-            </Button>
+            {/* Normal Form */}
+            {submitStatus.type !== 'verify' && (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <Input
+                            type="text"
+                            name="firstName"
+                            placeholder="First Name"
+                            value={formData.firstName}
+                            onChange={handleChange}
+                            error={errors.firstName}
+                            disabled={isSubmitting}
+                            required
+                        />
+                        <Input
+                            type="text"
+                            name="lastName"
+                            placeholder="Last Name"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            error={errors.lastName}
+                            disabled={isSubmitting}
+                            required
+                        />
+                    </div>
 
-            <p className="text-xs text-center text-zinc-500 dark:text-zinc-400">
-                By submitting this form, you agree to receive email communications from us.
-            </p>
-        </form>
+                    <Input
+                        type="email"
+                        name="email"
+                        placeholder="Email Address"
+                        value={formData.email}
+                        onChange={handleChange}
+                        error={errors.email}
+                        disabled={isSubmitting}
+                        required
+                    />
+
+                    <Input
+                        type="tel"
+                        name="phoneNumber"
+                        placeholder="Phone Number"
+                        value={formData.phoneNumber}
+                        onChange={handleChange}
+                        error={errors.phoneNumber}
+                        disabled={isSubmitting}
+                        required
+                    />
+
+                    {submitStatus.type && submitStatus.type !== 'verify' && (
+                        <div
+                            className={`rounded-lg p-4 text-sm ${submitStatus.type === 'success'
+                                ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+                                : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                                }`}
+                        >
+                            {submitStatus.message}
+                        </div>
+                    )}
+
+                    <Button
+                        type="submit"
+                        className="w-full"
+                        size="lg"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? 'Submitting...' : 'Join Our Email List'}
+                    </Button>
+
+                    <p className="text-xs text-center text-zinc-500 dark:text-zinc-400">
+                        By submitting this form, you agree to receive email communications from us.
+                    </p>
+                </form>
+            )}
+        </div>
     );
 }
-
